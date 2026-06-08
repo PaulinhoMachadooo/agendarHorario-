@@ -1,0 +1,1 @@
+ALTER TABLE public.agendamentos ADD COLUMN tipo_pet text NOT NULL DEFAULT 'cachorro';

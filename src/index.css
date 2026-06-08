@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Barbershop Theme - Cyan (#00CED1) + Pink (#FF1493) */
+    --background: 181 100% 41%;
+    --foreground: 210 20% 8%;
+
+    --card: 181 65% 92%;
+    --card-foreground: 210 20% 10%;
+
+    --popover: 181 65% 95%;
+    --popover-foreground: 210 20% 10%;
+
+    --primary: 328 100% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 181 75% 32%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 181 40% 85%;
+    --muted-foreground: 210 20% 30%;
+
+    --accent: 328 85% 70%;
+    --accent-foreground: 210 20% 10%;
+
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 181 55% 55%;
+    --input: 181 55% 96%;
+    --ring: 328 100% 54%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar specific colors */
+    --sidebar-background: 181 70% 30%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 328 100% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 181 70% 38%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 181 65% 45%;
+    --sidebar-ring: 328 100% 54%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(328 100% 54%),
+      hsl(320 95% 45%)
+    );
+    --gradient-card: linear-gradient(
+      135deg,
+      hsl(181 75% 94%),
+      hsl(181 65% 88%)
+    );
+
+    /* Shadows */
+    --shadow-violet: 0 10px 30px -10px hsl(328 100% 54% / 0.35);
+    --shadow-elevated: 0 20px 40px -15px hsl(181 85% 18% / 0.35);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .dark {
+    /* Keep dark class aligned with the default custom palette */
+    --background: 181 100% 41%;
+    --foreground: 210 20% 8%;
+    --card: 181 65% 92%;
+    --card-foreground: 210 20% 10%;
+    --popover: 181 65% 95%;
+    --popover-foreground: 210 20% 10%;
+    --primary: 328 100% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 181 75% 32%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 181 40% 85%;
+    --muted-foreground: 210 20% 30%;
+    --accent: 328 85% 70%;
+    --accent-foreground: 210 20% 10%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 181 55% 55%;
+    --input: 181 55% 96%;
+    --ring: 328 100% 54%;
+    --sidebar-background: 181 70% 30%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 328 100% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 181 70% 38%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 181 65% 45%;
+    --sidebar-ring: 328 100% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased dark;
+  }
+
+  /* Custom utility classes */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .shadow-violet {
+    box-shadow: var(--shadow-violet);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+}

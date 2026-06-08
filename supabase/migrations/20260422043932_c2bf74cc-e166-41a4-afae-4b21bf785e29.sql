@@ -1,0 +1,1 @@
+ALTER TABLE public.funcionarios DROP CONSTRAINT IF EXISTS funcionarios_user_id_fkey;

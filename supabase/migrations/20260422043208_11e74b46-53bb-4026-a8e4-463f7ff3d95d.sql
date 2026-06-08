@@ -1,0 +1,1 @@
+ALTER TYPE public.cargo_funcionario ADD VALUE IF NOT EXISTS 'tosadora';
