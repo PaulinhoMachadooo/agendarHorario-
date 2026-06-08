@@ -2,9 +2,10 @@ import type { Database } from "./types";
 
 // Hostinger API client (Supabase-compatible surface used by the app)
 
-const API_URL = import.meta.env.VITE_HOSTINGER_API_URL;
+const RAW_API_URL = import.meta.env.VITE_HOSTINGER_API_URL;
+const API_URL = RAW_API_URL?.replace(/\/+$/, "");
 
-if (!API_URL) {
+if (!RAW_API_URL) {
   console.warn(
     "VITE_HOSTINGER_API_URL não definida. Configure a URL da API PHP da Hostinger no .env.",
   );
@@ -63,7 +64,7 @@ async function request<T>(
   path: string,
   body?: Record<string, unknown>,
 ): Promise<T> {
-  if (!API_URL) {
+  if (!RAW_API_URL) {
     throw new Error("Hostinger API não configurada (VITE_HOSTINGER_API_URL).");
   }
 
