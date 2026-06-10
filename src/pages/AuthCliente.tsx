@@ -13,16 +13,16 @@ export default function AuthCliente() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [loginData, setLoginData] = useState({ telefone: "", password: "" });
+  const [loginData, setLoginData] = useState({ telefone: "" });
   const [signupData, setSignupData] = useState({
     nome: "",
     telefone: "",
-    password: "",
-    confirmPassword: "",
   });
 
   const normalizePhone = (value: string) => value.replace(/\D/g, "");
   const getClienteEmail = (telefone: string) => `${normalizePhone(telefone)}@cliente.barbearia.com`;
+  const createClientePassword = () =>
+    `cliente-sem-senha-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,7 +57,7 @@ export default function AuthCliente() {
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: getClienteEmail(telefoneNormalizado),
-        password: loginData.password,
+        password: "",
       });
 
       if (error) throw error;
@@ -106,19 +106,22 @@ export default function AuthCliente() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (signupData.password !== signupData.confirmPassword) {
+    const nome = signupData.nome.trim();
+    const cleanPhone = normalizePhone(signupData.telefone);
+
+    if (!nome) {
       toast({
         title: "Erro",
-        description: "As senhas não coincidem",
+        description: "Informe o nome do cliente",
         variant: "destructive",
       });
       return;
     }
 
-    if (signupData.password.length < 4) {
+    if (cleanPhone.length < 10) {
       toast({
         title: "Erro",
-        description: "A senha deve ter no mínimo 4 caracteres",
+        description: "Informe um telefone válido",
         variant: "destructive",
       });
       return;
@@ -127,19 +130,18 @@ export default function AuthCliente() {
     setLoading(true);
 
     try {
-      const cleanPhone = normalizePhone(signupData.telefone);
       const generatedEmail = getClienteEmail(cleanPhone);
       const redirectUrl = `${window.location.origin}/painel-cliente`;
 
       const { data, error } = await supabase.auth.signUp({
         email: generatedEmail,
-        password: signupData.password,
+        password: createClientePassword(),
         options: {
           emailRedirectTo: redirectUrl,
           data: {
             tipo_usuario: "cliente",
             user_type: "cliente",
-            nome: signupData.nome,
+            nome,
             telefone: cleanPhone,
           },
         },
@@ -152,7 +154,7 @@ export default function AuthCliente() {
           const { error: clienteError } = await supabase.from("clientes").insert([
             {
               user_id: data.user.id,
-              nome: signupData.nome,
+              nome,
               email: generatedEmail,
               telefone: cleanPhone,
             },
@@ -198,7 +200,7 @@ export default function AuthCliente() {
           </div>
           <CardTitle className="text-2xl">Área do Cliente</CardTitle>
           <CardDescription>
-            Entre ou cadastre-se para agendar seus serviços
+            Entre com seu telefone ou cadastre-se para agendar seus serviços
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -218,18 +220,6 @@ export default function AuthCliente() {
                     placeholder="(11) 99999-9999"
                     value={loginData.telefone}
                     onChange={(e) => setLoginData({ ...loginData, telefone: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Senha</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                     required
                   />
                 </div>
@@ -262,30 +252,6 @@ export default function AuthCliente() {
                     placeholder="(11) 99999-9999"
                     value={signupData.telefone}
                     onChange={(e) => setSignupData({ ...signupData, telefone: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••"
-                    value={signupData.password}
-                    onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-confirm">Confirmar Senha</Label>
-                  <Input
-                    id="signup-confirm"
-                    type="password"
-                    placeholder="••••••"
-                    value={signupData.confirmPassword}
-                    onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
                     required
                   />
                 </div>
