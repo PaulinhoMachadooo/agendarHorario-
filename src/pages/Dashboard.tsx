@@ -37,7 +37,7 @@ export default function Dashboard() {
         supabase.from('agendamentos').select('*'),
         supabase.from('servicos').select('*'),
         supabase.from('funcionarios').select('*'),
-        supabase.from('servicos_quitados' as any).select('*'),
+        supabase.from('quitados').select('*'),
       ]);
 
       if (clientesRes.data) setClientes(clientesRes.data);
@@ -47,7 +47,7 @@ export default function Dashboard() {
       if (quitadosRes && !quitadosRes.error && quitadosRes.data) {
         setQuitados(quitadosRes.data as unknown as Quitado[]);
       } else if (quitadosRes?.error) {
-        console.warn('servicos_quitados indisponível:', quitadosRes.error);
+        console.warn('quitados indisponível:', quitadosRes.error);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -66,7 +66,7 @@ export default function Dashboard() {
     const channel = supabase
       .channel("dashboard-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "servicos_quitados" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "quitados" }, () => fetchData())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -104,7 +104,7 @@ export default function Dashboard() {
   );
   const servicosRealizados = agendamentosConcluidos.length + quitadosAvulsos.length;
 
-  // Receita do mês: usa servicos_quitados quando disponível; fallback para agendamentos concluídos
+  // Receita do mês: usa quitados quando disponível; fallback para agendamentos concluídos
   const dentroDoMes = (iso?: string | null) => {
     if (!iso) return false;
     const d = new Date(iso);

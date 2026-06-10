@@ -23,6 +23,7 @@ $allowedTables = [
     'configuracoes_barbearia' => ['id','nome','endereco','telefone','logo_url','banner_url','horario_abertura','horario_fechamento','horario_almoco_inicio','horario_almoco_fim','dias_funcionamento','created_at','updated_at'],
     'agendamentos' => ['id','cliente_id','servico_id','funcionario_id','funcionario','data_hora','status','forma_pagamento','observacoes','created_at','updated_at'],
     'transacoes_financeiras' => ['id','agendamento_id','funcionario_id','valor_servico','valor_comissao','forma_pagamento','created_at','updated_at'],
+    'quitados' => ['id','agendamento_id','cliente_id','servico_id','funcionario_id','funcionario','data_hora','valor_servico','valor_comissao','forma_pagamento','observacoes','data_quitacao','created_at','updated_at'],
 ];
 
 function get_table_columns(string $table): array {
@@ -109,13 +110,17 @@ function is_concluded_status(?string $status): bool {
     return in_array($value, ['concluido', 'concluído'], true);
 }
 
-function ensure_financial_transaction(string $agendamentoId, string $servicoId, ?string $funcionarioId, ?string $formaPagamento): void {
-    $existsStmt = db()->prepare('SELECT id FROM transacoes_financeiras WHERE agendamento_id = :agendamento_id LIMIT 1');
-    $existsStmt->execute([':agendamento_id' => $agendamentoId]);
-    if ($existsStmt->fetch()) {
-        return;
-    }
+function is_paid_status(?string $status): bool {
+    if ($status === null) return false;
+    $value = mb_strtolower(trim($status));
+    return in_array($value, ['quitado', 'quitada'], true);
+}
 
+function is_finished_status(?string $status): bool {
+    return is_concluded_status($status) || is_paid_status($status);
+}
+
+function calculate_service_values(string $servicoId, ?string $funcionarioId): array {
     $servicoStmt = db()->prepare('SELECT preco FROM servicos WHERE id = :id LIMIT 1');
     $servicoStmt->execute([':id' => $servicoId]);
     $servico = $servicoStmt->fetch();
@@ -135,6 +140,18 @@ function ensure_financial_transaction(string $agendamentoId, string $servicoId, 
             }
         }
     }
+
+    return [$valorServico, $valorComissao];
+}
+
+function ensure_financial_transaction(string $agendamentoId, string $servicoId, ?string $funcionarioId, ?string $formaPagamento): void {
+    $existsStmt = db()->prepare('SELECT id FROM transacoes_financeiras WHERE agendamento_id = :agendamento_id LIMIT 1');
+    $existsStmt->execute([':agendamento_id' => $agendamentoId]);
+    if ($existsStmt->fetch()) {
+        return;
+    }
+
+    [$valorServico, $valorComissao] = calculate_service_values($servicoId, $funcionarioId);
 
     if (has_column('transacoes_financeiras', 'forma_pagamento')) {
         $insertStmt = db()->prepare('INSERT INTO transacoes_financeiras (id, agendamento_id, funcionario_id, valor_servico, valor_comissao, forma_pagamento, created_at, updated_at) VALUES (:id, :agendamento_id, :funcionario_id, :valor_servico, :valor_comissao, :forma_pagamento, NOW(), NOW())');
@@ -156,6 +173,47 @@ function ensure_financial_transaction(string $agendamentoId, string $servicoId, 
         ':funcionario_id' => $funcionarioId,
         ':valor_servico' => $valorServico,
         ':valor_comissao' => $valorComissao,
+    ]);
+}
+
+function ensure_quitado_record(array $agendamento, ?string $formaPagamento = null): void {
+    if (!has_column('quitados', 'agendamento_id')) {
+        return;
+    }
+
+    $agendamentoId = (string)($agendamento['id'] ?? '');
+    $servicoId = (string)($agendamento['servico_id'] ?? '');
+    $clienteId = (string)($agendamento['cliente_id'] ?? '');
+    if ($agendamentoId === '' || $servicoId === '' || $clienteId === '') {
+        return;
+    }
+
+    $existsStmt = db()->prepare('SELECT id FROM quitados WHERE agendamento_id = :agendamento_id LIMIT 1');
+    $existsStmt->execute([':agendamento_id' => $agendamentoId]);
+    if ($existsStmt->fetch()) {
+        return;
+    }
+
+    $funcionarioId = isset($agendamento['funcionario_id']) && $agendamento['funcionario_id'] ? (string)$agendamento['funcionario_id'] : null;
+    [$valorServico, $valorComissao] = calculate_service_values($servicoId, $funcionarioId);
+    $pagamento = $formaPagamento ?? ($agendamento['forma_pagamento'] ?? null);
+    if ($pagamento === null || $pagamento === '' || $pagamento === 'em_aberto') {
+        return;
+    }
+
+    $insertStmt = db()->prepare('INSERT INTO quitados (id, agendamento_id, cliente_id, servico_id, funcionario_id, funcionario, data_hora, valor_servico, valor_comissao, forma_pagamento, observacoes, data_quitacao, created_at, updated_at) VALUES (:id, :agendamento_id, :cliente_id, :servico_id, :funcionario_id, :funcionario, :data_hora, :valor_servico, :valor_comissao, :forma_pagamento, :observacoes, NOW(), NOW(), NOW())');
+    $insertStmt->execute([
+        ':id' => uuid_v4(),
+        ':agendamento_id' => $agendamentoId,
+        ':cliente_id' => $clienteId,
+        ':servico_id' => $servicoId,
+        ':funcionario_id' => $funcionarioId,
+        ':funcionario' => isset($agendamento['funcionario']) ? (string)$agendamento['funcionario'] : '',
+        ':data_hora' => (string)($agendamento['data_hora'] ?? date('Y-m-d H:i:s')),
+        ':valor_servico' => $valorServico,
+        ':valor_comissao' => $valorComissao,
+        ':forma_pagamento' => $pagamento,
+        ':observacoes' => $agendamento['observacoes'] ?? null,
     ]);
 }
 
@@ -331,7 +389,7 @@ try {
 
                     if (
                         $table === 'agendamentos' &&
-                        isset($found['status']) && is_concluded_status((string)$found['status']) &&
+                        isset($found['status']) && is_finished_status((string)$found['status']) &&
                         isset($found['servico_id'])
                     ) {
                         ensure_financial_transaction(
@@ -340,6 +398,10 @@ try {
                             isset($found['funcionario_id']) && $found['funcionario_id'] ? (string)$found['funcionario_id'] : null,
                             isset($found['forma_pagamento']) ? (string)$found['forma_pagamento'] : null
                         );
+
+                        if (is_paid_status((string)$found['status'])) {
+                            ensure_quitado_record($found, isset($found['forma_pagamento']) ? (string)$found['forma_pagamento'] : null);
+                        }
                     }
 
                     $inserted[] = $found;
@@ -388,12 +450,12 @@ try {
         $stmt = db()->prepare($sql);
         $stmt->execute($params);
 
-        if ($table === 'agendamentos' && isset($values['status']) && is_concluded_status((string)$values['status'])) {
-            $selectSql = "SELECT id, servico_id, funcionario_id" . (has_column('agendamentos', 'forma_pagamento') ? ", forma_pagamento" : "") . " FROM agendamentos";
+        if ($table === 'agendamentos' && isset($values['status']) && is_finished_status((string)$values['status'])) {
+            $selectSql = "SELECT id, cliente_id, servico_id, funcionario_id, funcionario, data_hora, observacoes" . (has_column('agendamentos', 'forma_pagamento') ? ", forma_pagamento" : "") . " FROM agendamentos";
             if ($where) {
-                $selectSql .= ' WHERE ' . implode(' AND ', $where) . " AND status IN ('concluido', 'concluído')";
+                $selectSql .= ' WHERE ' . implode(' AND ', $where) . " AND status IN ('concluido', 'concluído', 'quitado')";
             } else {
-                $selectSql .= " WHERE status IN ('concluido', 'concluído')";
+                $selectSql .= " WHERE status IN ('concluido', 'concluído', 'quitado')";
             }
 
             $selectStmt = db()->prepare($selectSql);
@@ -412,6 +474,10 @@ try {
                     $agendamento['funcionario_id'] ? (string)$agendamento['funcionario_id'] : null,
                     isset($agendamento['forma_pagamento']) ? (string)$agendamento['forma_pagamento'] : null
                 );
+
+                if (is_paid_status((string)$values['status'])) {
+                    ensure_quitado_record($agendamento, isset($agendamento['forma_pagamento']) ? (string)$agendamento['forma_pagamento'] : null);
+                }
             }
         }
 

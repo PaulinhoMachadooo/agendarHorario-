@@ -79,7 +79,7 @@ export default function Relatorios() {
             .gte('created_at', dataInicio)
             .lt('created_at', dataFimExclusivaIso),
           supabase
-            .from('servicos_quitados' as any)
+            .from('quitados')
             .select('*')
             .gte('data_quitacao', dataInicio)
             .lt('data_quitacao', dataFimExclusivaIso),
@@ -90,7 +90,7 @@ export default function Relatorios() {
       if (agendamentosRes.error) throw agendamentosRes.error;
       if (transacoesRes.error) throw transacoesRes.error;
       if (quitadosRes.error) {
-        console.warn('servicos_quitados indisponível:', quitadosRes.error);
+        console.warn('quitados indisponível:', quitadosRes.error);
       }
       if (comissoesRes.error) throw comissoesRes.error;
 
@@ -210,7 +210,7 @@ export default function Relatorios() {
         };
       });
 
-      // Serviços mais populares: combina agendamentos concluídos + servicos_quitados
+      // Serviços mais populares: combina agendamentos concluídos + quitados
       const servicosMap = new Map<string, { nome: string; quantidade: number; valor: number }>();
       const addServico = (nome: string, valor: number) => {
         if (!nome) return;
@@ -259,7 +259,7 @@ export default function Relatorios() {
       const performanceProfissionais = Array.from(profissionaisMap.values())
         .sort((a, b) => b.servicos - a.servicos);
 
-      // Formas de pagamento: prioriza servicos_quitados; se vazio, usa transacoes
+      // Formas de pagamento: prioriza quitados; se vazio, usa transacoes
       const formasPagamentoMap = new Map<string, number>();
       const fontePagamento: any[] = (quitados && quitados.length > 0)
         ? quitados

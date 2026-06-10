@@ -5,11 +5,25 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+if ($requestMethod === 'OPTIONS') {
     http_response_code(204);
     exit;
+}
+
+if (!function_exists('str_starts_with')) {
+    function str_starts_with(string $haystack, string $needle): bool {
+        return $needle === '' || strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+}
+
+if (!function_exists('str_contains')) {
+    function str_contains(string $haystack, string $needle): bool {
+        return $needle === '' || strpos($haystack, $needle) !== false;
+    }
 }
 
 function load_local_env(): void {
@@ -56,24 +70,77 @@ function env_value(string $key, ?string $default = null): ?string {
     return $value === false || $value === null ? $default : (string)$value;
 }
 
+function first_env_value(array $keys, ?string $default = null): ?string {
+    foreach ($keys as $key) {
+        $value = env_value($key);
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+    }
+
+    return $default;
+}
+
+function first_env_source(array $keys, string $defaultSource = 'default'): string {
+    load_local_env();
+    foreach ($keys as $key) {
+        $value = $_ENV[$key] ?? getenv($key);
+        if ($value !== false && $value !== null && (string)$value !== '') {
+            return $key;
+        }
+    }
+
+    return $defaultSource;
+}
+
+function db_settings(): array {
+    return [
+        'host' => first_env_value(['DB_HOST', 'MYSQL_HOST'], 'localhost'),
+        'port' => first_env_value(['DB_PORT', 'MYSQL_PORT'], '3306'),
+        'database' => first_env_value(['DB_DATABASE', 'DB_NAME', 'MYSQL_DATABASE'], 'u278136558_AgendaFran'),
+        'username' => first_env_value(['DB_USERNAME', 'DB_USER', 'MYSQL_USER'], 'u278136558_fran'),
+        'password' => first_env_value(['DB_PASSWORD', 'DB_PASS', 'MYSQL_PASSWORD']),
+        'sources' => [
+            'host' => first_env_source(['DB_HOST', 'MYSQL_HOST']),
+            'port' => first_env_source(['DB_PORT', 'MYSQL_PORT']),
+            'database' => first_env_source(['DB_DATABASE', 'DB_NAME', 'MYSQL_DATABASE']),
+            'username' => first_env_source(['DB_USERNAME', 'DB_USER', 'MYSQL_USER']),
+            'password' => first_env_source(['DB_PASSWORD', 'DB_PASS', 'MYSQL_PASSWORD'], 'missing'),
+        ],
+    ];
+}
+
+function safe_db_settings(): array {
+    $settings = db_settings();
+    $passwordConfigured = $settings['password'] !== null && $settings['password'] !== '';
+    unset($settings['password']);
+    $settings['password_configured'] = $passwordConfigured;
+    return $settings;
+}
+
 function db(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) {
         return $pdo;
     }
 
-    $host = env_value('DB_HOST', env_value('MYSQL_HOST', '127.0.0.1'));
-    $port = env_value('DB_PORT', env_value('MYSQL_PORT', '3306'));
-    $name = env_value('DB_DATABASE', env_value('DB_NAME', env_value('MYSQL_DATABASE', 'u278136558_AgendaFran')));
-    $user = env_value('DB_USERNAME', env_value('DB_USER', env_value('MYSQL_USER', 'u278136558_fran')));
-    $pass = env_value('DB_PASSWORD', env_value('DB_PASS', env_value('MYSQL_PASSWORD', 'Oluap.125874')));
+    $settings = db_settings();
+    $host = $settings['host'];
+    $port = $settings['port'];
+    $name = $settings['database'];
+    $user = $settings['username'];
+    $pass = $settings['password'];
 
-    if ($pass === '' && $user !== 'root') {
+    if ($host === null || $host === '' || $name === null || $name === '' || $user === null || $user === '') {
+        throw new RuntimeException('Configuração do banco incompleta. Configure DB_HOST, DB_DATABASE, DB_USERNAME e DB_PASSWORD em hostinger-api/.env ou nas variáveis do servidor.');
+    }
+
+    if (($pass === null || $pass === '') && $user !== 'root') {
         throw new RuntimeException('DB_PASSWORD não configurada para o usuário do banco. Crie hostinger-api/.env com DB_HOST, DB_DATABASE, DB_USERNAME e DB_PASSWORD ou configure essas variáveis no servidor.');
     }
 
     $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $pass, [
+    $pdo = new PDO($dsn, $user, (string)$pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,

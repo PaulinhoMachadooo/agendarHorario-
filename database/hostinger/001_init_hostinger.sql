@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS agendamentos (
   funcionario_id CHAR(36) NULL,
   funcionario VARCHAR(120) NOT NULL DEFAULT '',
   data_hora DATETIME NOT NULL,
-  status ENUM('agendado', 'pendente', 'confirmado', 'cancelado', 'concluido') NOT NULL DEFAULT 'agendado',
+  status ENUM('agendado', 'pendente', 'confirmado', 'cancelado', 'concluido', 'quitado') NOT NULL DEFAULT 'agendado',
   forma_pagamento ENUM('dinheiro','cartao_debito','cartao_credito','pix','pacote','em_aberto') NULL,
   observacoes TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -154,6 +154,29 @@ CREATE TABLE IF NOT EXISTS transacoes_financeiras (
   INDEX idx_transacoes_created_at (created_at)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS quitados (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  agendamento_id CHAR(36) NULL,
+  cliente_id CHAR(36) NOT NULL,
+  servico_id CHAR(36) NOT NULL,
+  funcionario_id CHAR(36) NULL,
+  funcionario VARCHAR(120) NOT NULL DEFAULT '',
+  data_hora DATETIME NOT NULL,
+  valor_servico DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  valor_comissao DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  forma_pagamento ENUM('dinheiro','cartao_debito','cartao_credito','pix','pacote','em_aberto') NOT NULL,
+  observacoes TEXT NULL,
+  data_quitacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_quitados_agendamento_id (agendamento_id),
+  INDEX idx_quitados_cliente_id (cliente_id),
+  INDEX idx_quitados_servico_id (servico_id),
+  INDEX idx_quitados_funcionario_id (funcionario_id),
+  INDEX idx_quitados_data_quitacao (data_quitacao),
+  INDEX idx_quitados_forma_pagamento (forma_pagamento)
+) ENGINE=InnoDB;
+
 -- ---------------------------------------------------------------------------
 -- Seed defaults
 -- ---------------------------------------------------------------------------
@@ -189,7 +212,7 @@ BEGIN
   DECLARE v_valor_comissao_cfg DECIMAL(10,2) DEFAULT 0.00;
   DECLARE v_valor_comissao_final DECIMAL(10,2) DEFAULT 0.00;
 
-  IF NEW.status = 'concluido' AND OLD.status <> 'concluido' THEN
+  IF NEW.status IN ('concluido', 'quitado') AND OLD.status <> NEW.status THEN
     SELECT preco
       INTO v_valor_servico
       FROM servicos
@@ -220,7 +243,8 @@ BEGIN
       forma_pagamento,
       created_at,
       updated_at
-    ) VALUES (
+    )
+    SELECT
       UUID(),
       NEW.id,
       NEW.funcionario_id,
@@ -229,7 +253,46 @@ BEGIN
       NEW.forma_pagamento,
       NOW(),
       NOW()
+    WHERE NOT EXISTS (
+      SELECT 1 FROM transacoes_financeiras tf WHERE tf.agendamento_id = NEW.id
     );
+
+    IF NEW.status = 'quitado' AND NEW.forma_pagamento IS NOT NULL AND NEW.forma_pagamento <> 'em_aberto' THEN
+      INSERT INTO quitados (
+        id,
+        agendamento_id,
+        cliente_id,
+        servico_id,
+        funcionario_id,
+        funcionario,
+        data_hora,
+        valor_servico,
+        valor_comissao,
+        forma_pagamento,
+        observacoes,
+        data_quitacao,
+        created_at,
+        updated_at
+      )
+      SELECT
+        UUID(),
+        NEW.id,
+        NEW.cliente_id,
+        NEW.servico_id,
+        NEW.funcionario_id,
+        NEW.funcionario,
+        NEW.data_hora,
+        v_valor_servico,
+        v_valor_comissao_final,
+        NEW.forma_pagamento,
+        NEW.observacoes,
+        NOW(),
+        NOW(),
+        NOW()
+      WHERE NOT EXISTS (
+        SELECT 1 FROM quitados q WHERE q.agendamento_id = NEW.id
+      );
+    END IF;
   END IF;
 END $$
 
