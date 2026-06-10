@@ -26,6 +26,7 @@ export type Database = {
           observacoes: string | null;
           servico_id: string;
           status: string;
+          tipo_pet: string;
           updated_at: string;
         };
         Insert: {
@@ -39,6 +40,7 @@ export type Database = {
           observacoes?: string | null;
           servico_id: string;
           status?: string;
+          tipo_pet?: string;
           updated_at?: string;
         };
         Update: {
@@ -52,6 +54,7 @@ export type Database = {
           observacoes?: string | null;
           servico_id?: string;
           status?: string;
+          tipo_pet?: string;
           updated_at?: string;
         };
         Relationships: [

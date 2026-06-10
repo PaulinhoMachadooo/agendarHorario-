@@ -35,6 +35,7 @@ interface DateTimeSelectorProps {
   selectedTime: string;
   funcionarioId: string;
   servicoId: string;
+  tipoPet?: "cachorro" | "gato";
   onDateChange: (date: Date | undefined) => void;
   onTimeChange: (time: string) => void;
 }
@@ -47,6 +48,7 @@ export function DateTimeSelector({
   selectedTime,
   funcionarioId,
   servicoId,
+  tipoPet = "cachorro",
   onDateChange,
   onTimeChange,
 }: DateTimeSelectorProps) {
@@ -152,7 +154,13 @@ export function DateTimeSelector({
     if (selectedDate && configuracoes) {
       generateHorariosDisponiveis();
     }
-  }, [selectedDate, configuracoes, agendamentosExistentes, tempoServico]);
+  }, [
+    selectedDate,
+    configuracoes,
+    agendamentosExistentes,
+    tempoServico,
+    tipoPet,
+  ]);
 
   const INTERVALO_ENTRE_AGENDAMENTOS = 5; // minutos de folga entre agendamentos
 
@@ -248,7 +256,15 @@ export function DateTimeSelector({
       horarioAtual = addMinutes(horarioAtual, tempoComIntervalo);
     }
 
-    setHorariosDisponiveis(horarios);
+    const horariosFiltrados =
+      tipoPet === "gato"
+        ? horarios.filter((horario) => {
+            const [hora, minuto] = horario.split(":").map(Number);
+            return hora * 60 + minuto < 12 * 60;
+          })
+        : horarios;
+
+    setHorariosDisponiveis(horariosFiltrados);
   };
 
   const isDiaFuncionamento = (date: Date) => {
@@ -272,6 +288,14 @@ export function DateTimeSelector({
     // Desabilita datas passadas
     if (isBefore(date, startOfDay(new Date()))) {
       return true;
+    }
+
+    // Gatos são atendidos apenas às terças e quartas-feiras.
+    if (tipoPet === "gato") {
+      const diaSemana = date.getDay();
+      if (diaSemana !== 2 && diaSemana !== 3) {
+        return true;
+      }
     }
 
     // Desabilita dias que não são de funcionamento
@@ -319,7 +343,9 @@ export function DateTimeSelector({
           </Label>
           {horariosDisponiveis.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
-              Nenhum horário disponível para esta data
+              {tipoPet === "gato"
+                ? "Nenhum horário disponível para gatos nesta data. Gatos são atendidos somente terça e quarta de manhã."
+                : "Nenhum horário disponível para esta data"}
             </p>
           ) : (
             <div className="grid grid-cols-3 gap-2">

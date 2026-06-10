@@ -43,6 +43,7 @@ interface AgendamentoColaborador {
   data_hora: string;
   status: string;
   observacoes: string;
+  tipo_pet?: "cachorro" | "gato" | null;
   cliente_id: string;
   servico_id: string;
   clientes: {
@@ -240,6 +241,132 @@ export default function PainelColaborador() {
     };
   };
 
+  const getTipoPetInfo = (tipoPet?: string | null) =>
+    tipoPet === "gato"
+      ? { label: "Gatos", badge: "🐱 Gato" }
+      : { label: "Cachorros", badge: "🐶 Cachorro" };
+
+  const agendamentosPorAnimal = [
+    {
+      tipo: "cachorro" as const,
+      label: "Cachorros",
+      descricao: "Agendamentos de cães",
+      items: agendamentos.filter(
+        (agendamento) => agendamento.tipo_pet !== "gato",
+      ),
+    },
+    {
+      tipo: "gato" as const,
+      label: "Gatos",
+      descricao: "Agendamentos de gatos",
+      items: agendamentos.filter(
+        (agendamento) => agendamento.tipo_pet === "gato",
+      ),
+    },
+  ];
+
+  const renderAgendamentosTable = (items: AgendamentoColaborador[]) => (
+    <div className="overflow-x-auto">
+      <Table className="min-w-[900px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Data/Hora</TableHead>
+            <TableHead>Cliente</TableHead>
+            <TableHead>Animal</TableHead>
+            <TableHead>Serviço</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Observações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((agendamento) => {
+            const dataHora = formatDataHora(agendamento.data_hora);
+            const tipoPet = getTipoPetInfo(agendamento.tipo_pet);
+            return (
+              <TableRow key={agendamento.id}>
+                <TableCell>
+                  <div>
+                    <div className="font-medium">{dataHora.data}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {dataHora.diaSemana} às {dataHora.hora}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <div className="font-medium">
+                      {agendamento.clientes?.nome}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {agendamento.clientes?.telefone}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{tipoPet.badge}</Badge>
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <div className="font-medium">
+                      {agendamento.servicos?.nome}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      R$ {agendamento.servicos?.preco.toFixed(2)} •{" "}
+                      {agendamento.servicos?.tempo_medio}min
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>{getStatusBadge(agendamento.status)}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const questionario = parseQuestionarioAnimal(
+                      agendamento.observacoes,
+                    );
+
+                    if (!questionario) {
+                      return (
+                        <span className="text-sm">
+                          {agendamento.observacoes || "-"}
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-1 text-sm">
+                        <p>
+                          <span className="font-medium">
+                            Problema de saúde:
+                          </span>{" "}
+                          {questionario.problemaSaude}
+                        </p>
+                        <p>
+                          <span className="font-medium">
+                            Acostumado a banho e tosa:
+                          </span>{" "}
+                          {questionario.acostumadoBanhoTosa}
+                        </p>
+                        <p>
+                          <span className="font-medium">
+                            Restrição com banho/tosa:
+                          </span>{" "}
+                          {questionario.restricaoBanhoTosa}
+                        </p>
+                        <p>
+                          <span className="font-medium">Algo a mais:</span>{" "}
+                          {questionario.observacoesAdicionais}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -395,103 +522,27 @@ export default function PainelColaborador() {
               Nenhum agendamento programado
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[800px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data/Hora</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Serviço</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Observações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {agendamentos.slice(0, 10).map((agendamento) => {
-                    const dataHora = formatDataHora(agendamento.data_hora);
-                    return (
-                      <TableRow key={agendamento.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{dataHora.data}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {dataHora.diaSemana} às {dataHora.hora}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {agendamento.clientes?.nome}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {agendamento.clientes?.telefone}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {agendamento.servicos?.nome}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              R$ {agendamento.servicos?.preco.toFixed(2)} •{" "}
-                              {agendamento.servicos?.tempo_medio}min
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(agendamento.status)}
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            const questionario = parseQuestionarioAnimal(
-                              agendamento.observacoes,
-                            );
-
-                            if (!questionario) {
-                              return (
-                                <span className="text-sm">
-                                  {agendamento.observacoes || "-"}
-                                </span>
-                              );
-                            }
-
-                            return (
-                              <div className="space-y-1 text-sm">
-                                <p>
-                                  <span className="font-medium">
-                                    Problema de saúde:
-                                  </span>{" "}
-                                  {questionario.problemaSaude}
-                                </p>
-                                <p>
-                                  <span className="font-medium">
-                                    Acostumado a banho e tosa:
-                                  </span>{" "}
-                                  {questionario.acostumadoBanhoTosa}
-                                </p>
-                                <p>
-                                  <span className="font-medium">
-                                    Restrição com banho/tosa:
-                                  </span>{" "}
-                                  {questionario.restricaoBanhoTosa}
-                                </p>
-                                <p>
-                                  <span className="font-medium">
-                                    Algo a mais:
-                                  </span>{" "}
-                                  {questionario.observacoesAdicionais}
-                                </p>
-                              </div>
-                            );
-                          })()}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="space-y-6">
+              {agendamentosPorAnimal.map((grupo) => (
+                <div key={grupo.tipo} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+                    <div>
+                      <h3 className="font-semibold">{grupo.label}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {grupo.descricao}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{grupo.items.length}</Badge>
+                  </div>
+                  {grupo.items.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-4 border rounded-lg">
+                      Nenhum agendamento de {grupo.label.toLowerCase()}.
+                    </p>
+                  ) : (
+                    renderAgendamentosTable(grupo.items.slice(0, 10))
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
