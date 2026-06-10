@@ -21,10 +21,12 @@ export type Database = {
           data_hora: string;
           funcionario: string;
           funcionario_id: string | null;
+          forma_pagamento: string | null;
           id: string;
           observacoes: string | null;
           servico_id: string;
           status: string;
+          updated_at: string;
         };
         Insert: {
           cliente_id: string;
@@ -32,10 +34,12 @@ export type Database = {
           data_hora: string;
           funcionario?: string;
           funcionario_id?: string | null;
+          forma_pagamento?: string | null;
           id?: string;
           observacoes?: string | null;
           servico_id: string;
           status?: string;
+          updated_at?: string;
         };
         Update: {
           cliente_id?: string;
@@ -43,10 +47,12 @@ export type Database = {
           data_hora?: string;
           funcionario?: string;
           funcionario_id?: string | null;
+          forma_pagamento?: string | null;
           id?: string;
           observacoes?: string | null;
           servico_id?: string;
           status?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -245,30 +251,87 @@ export type Database = {
         };
         Relationships: [];
       };
-      transacoes_financeiras: {
+      quitados: {
         Row: {
           agendamento_id: string | null;
+          cliente_id: string;
           created_at: string;
+          data_hora: string;
+          data_quitacao: string;
+          forma_pagamento: string;
+          funcionario: string;
           funcionario_id: string | null;
           id: string;
+          observacoes: string | null;
+          servico_id: string;
+          updated_at: string;
           valor_comissao: number;
           valor_servico: number;
         };
         Insert: {
           agendamento_id?: string | null;
+          cliente_id: string;
           created_at?: string;
+          data_hora: string;
+          data_quitacao?: string;
+          forma_pagamento: string;
+          funcionario?: string;
           funcionario_id?: string | null;
           id?: string;
+          observacoes?: string | null;
+          servico_id: string;
+          updated_at?: string;
           valor_comissao?: number;
           valor_servico?: number;
         };
         Update: {
           agendamento_id?: string | null;
+          cliente_id?: string;
           created_at?: string;
+          data_hora?: string;
+          data_quitacao?: string;
+          forma_pagamento?: string;
+          funcionario?: string;
+          funcionario_id?: string | null;
+          id?: string;
+          observacoes?: string | null;
+          servico_id?: string;
+          updated_at?: string;
+          valor_comissao?: number;
+          valor_servico?: number;
+        };
+        Relationships: [];
+      };
+      transacoes_financeiras: {
+        Row: {
+          agendamento_id: string | null;
+          created_at: string;
+          forma_pagamento: string | null;
+          funcionario_id: string | null;
+          id: string;
+          valor_comissao: number;
+          valor_servico: number;
+          updated_at: string;
+        };
+        Insert: {
+          agendamento_id?: string | null;
+          created_at?: string;
+          forma_pagamento?: string | null;
           funcionario_id?: string | null;
           id?: string;
           valor_comissao?: number;
           valor_servico?: number;
+          updated_at?: string;
+        };
+        Update: {
+          agendamento_id?: string | null;
+          created_at?: string;
+          forma_pagamento?: string | null;
+          funcionario_id?: string | null;
+          id?: string;
+          valor_comissao?: number;
+          valor_servico?: number;
+          updated_at?: string;
         };
         Relationships: [
           {

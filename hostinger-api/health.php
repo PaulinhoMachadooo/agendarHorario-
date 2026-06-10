@@ -10,7 +10,7 @@ try {
     $pdo = db();
     $ping = $pdo->query('SELECT 1 AS ok, DATABASE() AS current_database, VERSION() AS mysql_version')->fetch();
 
-    $tables = ['auth_users', 'auth_sessions', 'clientes', 'servicos', 'funcionarios', 'agendamentos', 'transacoes_financeiras'];
+    $tables = ['auth_users', 'auth_sessions', 'clientes', 'servicos', 'funcionarios', 'agendamentos', 'transacoes_financeiras', 'quitados'];
     $tableStatus = [];
     $stmt = $pdo->prepare('SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name');
 

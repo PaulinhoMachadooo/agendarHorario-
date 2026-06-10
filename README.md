@@ -19,14 +19,14 @@ DB_PASSWORD=senha_do_banco
 
 > Na Hostinger, quando o site e o MySQL estão no mesmo plano, o host normalmente é `localhost`. Se o hPanel informar outro host, use exatamente o valor exibido lá.
 
-3. Importe os SQLs de `database/hostinger/` no banco MySQL, em ordem numérica.
+3. Importe os SQLs de `database/hostinger/` no banco MySQL, em ordem numérica. A migration `008_create_quitados.sql` cria a tabela `quitados`, usada para salvar dados da quitação e forma de pagamento quando um serviço é quitado.
 4. Abra o diagnóstico da API no navegador ou via cURL:
 
 ```bash
 curl https://agendarhorarios.online/api/barber/health.php
 ```
 
-A resposta esperada é `status: "ok"`, `database.connected: true` e as tabelas principais marcadas como `true`. Se aparecer `status: "error"`, confira a mensagem em `error.message` e os campos em `database.settings.sources` para saber se a API está usando variáveis do `.env` ou valores padrão.
+A resposta esperada é `status: "ok"`, `database.connected: true` e as tabelas principais, incluindo `quitados`, marcadas como `true`. Se aparecer `status: "error"`, confira a mensagem em `error.message` e os campos em `database.settings.sources` para saber se a API está usando variáveis do `.env` ou valores padrão.
 
 ## Problemas comuns de conexão
 

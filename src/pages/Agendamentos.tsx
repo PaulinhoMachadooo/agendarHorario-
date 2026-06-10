@@ -195,7 +195,7 @@ export default function Agendamentos() {
             .eq("ativo", true)
             .order("nome"),
           supabase
-            .from("servicos_quitados" as any)
+            .from("quitados")
             .select("*")
             .order("data_quitacao", { ascending: false }),
         ]);
@@ -491,7 +491,7 @@ export default function Agendamentos() {
       const valorServico = Number(servico?.preco || 0);
 
       const { error: insertError } = await supabase
-        .from("servicos_quitados" as any)
+        .from("quitados")
         .insert([
           {
             agendamento_id: quitandoAgendamento.id,
