@@ -63,6 +63,7 @@ interface Agendamento {
   observacoes: string;
   servico_id: string;
   funcionario_id: string;
+  tipo_pet?: "cachorro" | "gato" | null;
   servicos: { nome: string; preco: number };
   funcionarios: { nome: string };
 }
@@ -83,6 +84,7 @@ export default function PainelCliente() {
     acostumado_banho_tosa: "",
     restricao_banho_tosa: "",
     observacoes_adicionais: "",
+    tipo_pet: "cachorro" as "cachorro" | "gato",
   });
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("");
@@ -244,6 +246,30 @@ export default function PainelCliente() {
     }
 
     try {
+      if (novoAgendamento.tipo_pet === "gato") {
+        const diaSemana = selectedDate.getDay();
+        const [horaG, minutoG] = selectedTime.split(":").map(Number);
+
+        if (diaSemana !== 2 && diaSemana !== 3) {
+          toast({
+            title: "Data indisponível para gatos",
+            description:
+              "Gatos são atendidos somente às terças e quartas-feiras.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (horaG * 60 + minutoG >= 12 * 60) {
+          toast({
+            title: "Horário indisponível para gatos",
+            description: "Gatos são atendidos somente no período da manhã.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       // Combina data e hora selecionadas
       const [hora, minuto] = selectedTime.split(":").map(Number);
       const dataHora = new Date(selectedDate);
@@ -263,7 +289,8 @@ export default function PainelCliente() {
             `- Observações adicionais: ${novoAgendamento.observacoes_adicionais || "Não informado"}`,
           ].join("\n"),
           status: "agendado" as any,
-        },
+          tipo_pet: novoAgendamento.tipo_pet,
+        } as any,
       ]);
 
       if (error) throw error;
@@ -281,6 +308,7 @@ export default function PainelCliente() {
         acostumado_banho_tosa: "",
         restricao_banho_tosa: "",
         observacoes_adicionais: "",
+        tipo_pet: "cachorro",
       });
       setSelectedDate(undefined);
       setSelectedTime("");
@@ -482,11 +510,42 @@ export default function PainelCliente() {
                   </Select>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="tipo_pet">Tipo do pet</Label>
+                  <Select
+                    value={novoAgendamento.tipo_pet}
+                    onValueChange={(value) => {
+                      setNovoAgendamento({
+                        ...novoAgendamento,
+                        tipo_pet: value as "cachorro" | "gato",
+                      });
+                      setSelectedDate(undefined);
+                      setSelectedTime("");
+                    }}
+                    required
+                  >
+                    <SelectTrigger id="tipo_pet">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cachorro">🐶 Cachorro</SelectItem>
+                      <SelectItem value="gato">🐱 Gato</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {novoAgendamento.tipo_pet === "gato" && (
+                    <p className="text-xs text-muted-foreground">
+                      Atendimento para gatos: apenas terças e quartas-feiras,
+                      no período da manhã.
+                    </p>
+                  )}
+                </div>
+
                 <DateTimeSelector
                   selectedDate={selectedDate}
                   selectedTime={selectedTime}
                   funcionarioId={novoAgendamento.funcionario_id}
                   servicoId={novoAgendamento.servico_id}
+                  tipoPet={novoAgendamento.tipo_pet}
                   onDateChange={setSelectedDate}
                   onTimeChange={setSelectedTime}
                 />
@@ -626,6 +685,11 @@ export default function PainelCliente() {
                             <h3 className={`font-semibold ${isCancelado ? "line-through text-muted-foreground" : ""}`}>
                               {servicoDados.nome}
                             </h3>
+                            <Badge variant="outline" className="mt-1">
+                              {agendamento.tipo_pet === "gato"
+                                ? "🐱 Gato"
+                                : "🐶 Cachorro"}
+                            </Badge>
                             <p className="text-sm text-muted-foreground">
                               Profissional: {agendamento.funcionarios?.nome}
                             </p>
