@@ -7,8 +7,14 @@ require_once __DIR__ . '/../config.php';
 $input = json_body();
 $email = strtolower(trim((string)($input['email'] ?? '')));
 $password = (string)($input['password'] ?? '');
+$isClienteEmail = substr($email, -strlen('@cliente.barbearia.com')) === '@cliente.barbearia.com';
+$isPasswordlessClienteLogin = $isClienteEmail && $password === '';
 
-if (!$email || !$password) {
+if (!$email) {
+    respond(['data' => null, 'error' => ['message' => 'Email é obrigatório.']], 422);
+}
+
+if (!$password && !$isPasswordlessClienteLogin) {
     respond(['data' => null, 'error' => ['message' => 'Email e senha são obrigatórios.']], 422);
 }
 
@@ -17,13 +23,28 @@ try {
     $stmt->execute([':email' => $email]);
     $user = $stmt->fetch();
 
-    if (!$user || !password_verify($password, $user['password_hash'])) {
+    if (!$user) {
         respond(['data' => null, 'error' => ['message' => 'Credenciais inválidas']], 401);
     }
 
     $metaColumn = auth_metadata_column();
     $metadata = json_decode($user[$metaColumn] ?? '{}', true);
     $metadata = is_array($metadata) ? $metadata : [];
+    $isClienteUser = ($metadata['tipo_usuario'] ?? null) === 'cliente' || ($metadata['user_type'] ?? null) === 'cliente';
+
+    if ($isPasswordlessClienteLogin && !$isClienteUser) {
+        $clienteStmt = db()->prepare('SELECT id FROM clientes WHERE user_id = :user_id LIMIT 1');
+        $clienteStmt->execute([':user_id' => $user['id']]);
+        $isClienteUser = (bool)$clienteStmt->fetch();
+    }
+
+    if ($isPasswordlessClienteLogin) {
+        if (!$isClienteUser) {
+            respond(['data' => null, 'error' => ['message' => 'Credenciais inválidas']], 401);
+        }
+    } elseif (!password_verify($password, $user['password_hash'])) {
+        respond(['data' => null, 'error' => ['message' => 'Credenciais inválidas']], 401);
+    }
 
     $session = create_session($user['id']);
 
